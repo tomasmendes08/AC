@@ -6,6 +6,7 @@ Created on Tue Nov  9 20:15:02 2021
 """
 
 import pandas as pd
+import numpy as np
 
 #loading clients data
 clients = pd.read_csv("./data/client.csv", sep=';')
@@ -35,24 +36,35 @@ districts = pd.read_csv("./data/district.csv", sep=';')
 districts.rename(columns={'name ':'name', 'code ':'district_id'}, inplace=True)
 districts.drop(columns=["name", "region"], inplace=True)
 
-districts_without_nulls = districts[districts["unemploymant rate '95 "] != '?']
-unemployment_rates_95 = pd.to_numeric(districts_without_nulls["unemploymant rate '95 "])
 
-#mean of the unemploymant rate '95
-mean_unemployment_rate_95 = unemployment_rates_95.mean()
-
-#replace missing values for the mean. Maybe use the minimal or the maximal value?
-districts["unemploymant rate '95 "].replace('?', str(round(mean_unemployment_rate_95, 2)), inplace=True)
+#replace missing values with the next column's value
+districts["unemploymant rate '95 "] = np.where(districts["unemploymant rate '95 "] == '?', districts["unemploymant rate '96 "], districts["unemploymant rate '95 "])
 districts["unemploymant rate '95 "] = pd.to_numeric(districts["unemploymant rate '95 "])
 
 
-districts_without_nulls = districts[districts["no. of commited crimes '95 "] != '?']
-commited_rates_95 = pd.to_numeric(districts_without_nulls["no. of commited crimes '95 "])
-
-#mean of the commited crimes in '95
-mean_commited_rates_95 = commited_rates_95.mean()
-
-#replace missing values for the mean. Maybe use the minimal or the maximal value?
-districts["no. of commited crimes '95 "].replace('?', str(round(mean_commited_rates_95, 2)), inplace=True)
+#replace missing values with the next column's value
+districts["no. of commited crimes '95 "] = np.where(districts["no. of commited crimes '95 "] == '?', districts["no. of commited crimes '96 "], districts["no. of commited crimes '95 "])
 districts["no. of commited crimes '95 "] = pd.to_numeric(districts["no. of commited crimes '95 "])
 
+#merging clients, disps and cards with districts
+clients_disps_cards_districts = clients_disps_cards.merge(districts, on="district_id")
+
+
+#loading accounts data
+accounts = pd.read_csv("./data/account.csv", sep=';')
+
+def generate_gender(month):
+    gender = month > 12
+    if gender: month -= 50
+    
+    return gender
+
+def convert_date(date):
+    year = date // 10000
+    days = date % 100
+    month = date // 100 % 100
+    
+    gender = generate_gender(month)
+    
+    return (year, month, days, gender)
+    
