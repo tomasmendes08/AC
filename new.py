@@ -40,20 +40,27 @@ process_date(clients, ['byear', 'bmonth', 'bday', 'gender'],'birth_number')
 #loading disps data
 disps = pd.read_csv("./data/disp.csv", sep=';')
 
-#merging clients with disps
-clients_disps = clients.merge(disps, on="client_id", how="inner")
-
-#loading cards data
-cards = pd.read_csv("./data/card_train.csv", sep=';')
+#processing disps data
+disps['type'].replace({'OWNER':True, 'DISPONENT':False}, inplace=True)
 
 #rename type column to disp_type
 disps.rename(columns={'type':'disp_type'}, inplace=True)
 
+#merging clients with disps
+clients_disps_cards = clients.merge(disps, on="client_id", how="inner")
+
+#loading cards data
+# cards = pd.read_csv("./data/card_train.csv", sep=';')
+# cards.drop(columns=["type"],inplace=True)
+
 #rename type column to card_type
-cards.rename(columns={'type':'card_type'}, inplace=True)
+# cards.rename(columns={'type':'card_type'}, inplace=True)
+
+#process cards data
+# process_date(cards, ['cyear', 'cmonth', 'cday'], 'issued')
 
 #merging clients and disps with cards
-clients_disps_cards = clients_disps.merge(cards, on='disp_id', how='outer')
+# clients_disps_cards = clients_disps.merge(cards, on='disp_id', how='outer')
 
 #loading districts data
 districts = pd.read_csv("./data/district.csv", sep=';')
@@ -82,7 +89,7 @@ accounts = pd.read_csv("./data/account.csv", sep=';')
 #processing account creation date and frequency
 
 accounts.rename(columns={'district_id':'acc_district_id'}, inplace=True)
-process_date(accounts,['cyear', 'cmonth', 'cday'])
+process_date(accounts,['ayear', 'amonth', 'aday'])
 
 accounts = pd.concat([accounts.drop('frequency', axis=1), pd.get_dummies(accounts['frequency'])], axis=1)
 
@@ -102,3 +109,65 @@ process_date(transactions, ['tyear', 'tmonth', 'tday'])
 
 #mergins clients, disps, cards, districts and accounts with transactions
 clients_disps_cards_districts_accounts_transactions = clients_disps_cards_districts_accounts.merge(transactions, on="account_id", how="inner")
+
+
+#loading loan data
+loans = pd.read_csv('./data/loan_train.csv', sep=';')
+
+#processing loan data
+loans.rename(columns={'amount':'loan_amount', 'duration':'loan_duration', 'payments':'loan_monthly_payment'}, inplace=True)
+process_date(loans, ['lyear', 'lmonth', 'lday'])
+loans = loans[['loan_id', 'account_id', 'loan_amount', 'loan_duration', 'loan_monthly_payment', 'lyear', 'lmonth', 'lday', 'status']]
+
+#mergins clients, disps, cards, districts, accounts and transactions with loans
+full_data = clients_disps_cards_districts_accounts_transactions.merge(loans, on="account_id")
+
+
+# ---------------------------------------------------------------------------
+
+
+#preprocessing test data
+
+#loading cards test data
+# cards_test = pd.read_csv("./data/card_test.csv", sep=';')
+
+#rename type column to card_type
+# cards_test.rename(columns={'type':'card_type'}, inplace=True)
+
+#merging clients and disps with cards_test
+# clients_disps_cards_test = clients_disps.merge(cards_test, on='disp_id', how='outer')
+
+#merging clients, disps and cards_test with districts
+# clients_disps_cards_districts_test = clients_disps_cards.merge(districts, on="district_id", how='inner')
+
+#merging clients, disps, cards_test and districts with accounts
+# clients_disps_cards_districts_accounts_test = clients_disps_cards_districts.merge(accounts, on="account_id")
+
+#loading transaction test data
+transactions_test = pd.read_csv('./data/trans_test.csv', sep=';')
+
+#processing transaction test data
+transactions_test.drop(columns={'k_symbol','bank','account', 'operation'}, inplace=True)
+transactions_test['type'].replace({'withdrawal in cash':'withdrawal'}, inplace=True)
+transactions_test['type'] = transactions_test['type'].apply(lambda x : x == 'credit')
+transactions_test.rename(columns={'type':'trans_type'}, inplace=True)
+
+process_date(transactions_test, ['tyear', 'tmonth', 'tday'])
+
+#mergins clients, disps, cards_test, districts and accounts with transactions_test
+clients_disps_cards_districts_accounts_transactions_test = clients_disps_cards_districts_accounts.merge(transactions_test, on="account_id")
+
+
+#loading loan test data
+loans_test = pd.read_csv('./data/loan_test.csv', sep=';')
+all_ids_test = loans_test['loan_id'].values
+
+#processing loan test data
+loans_test.rename(columns={'amount':'loan_amount', 'duration':'loan_duration', 'payments':'loan_monthly_payment'}, inplace=True)
+process_date(loans_test, ['lyear', 'lmonth', 'lday'])
+loans_test = loans_test[['loan_id', 'account_id', 'loan_amount', 'loan_duration', 'loan_monthly_payment', 'lyear', 'lmonth', 'lday', 'status']]
+
+#mergins clients, disps, cards_test, districts, accounts and transactions_test with loans_test
+full_data_test = clients_disps_cards_districts_accounts_transactions_test.merge(loans_test, on="account_id")
+full_data_test.drop(columns={"status"}, inplace=True)
+
