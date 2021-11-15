@@ -10,17 +10,17 @@ import numpy as np
 
 def generate_gender(month):
     gender = month > 12
-    if gender: month -= 50
+    if gender: month = month - 50
     
-    return gender
+    return gender, month
 
 def convert_date(date):
     year = date // 10000 + 1900
     days = date % 100
-    month = date // 100 % 100
+    month_aux = date // 100 % 100
     
-    gender = generate_gender(month)
-    
+    gender, month = generate_gender(month_aux)
+
     return (year, month, days, gender)  
 
 def process_date(df, col_list, col_name='date'):
@@ -47,20 +47,20 @@ disps['type'].replace({'OWNER':True, 'DISPONENT':False}, inplace=True)
 disps.rename(columns={'type':'disp_type'}, inplace=True)
 
 #merging clients with disps
-clients_disps_cards = clients.merge(disps, on="client_id", how="inner")
+clients_disps = clients.merge(disps, on="client_id", how="inner")
 
 #loading cards data
-# cards = pd.read_csv("./data/card_train.csv", sep=';')
+cards = pd.read_csv("./data/card_train.csv", sep=';')
 # cards.drop(columns=["type"],inplace=True)
 
 #rename type column to card_type
-# cards.rename(columns={'type':'card_type'}, inplace=True)
+cards.rename(columns={'type':'card_type'}, inplace=True)
 
 #process cards data
-# process_date(cards, ['cyear', 'cmonth', 'cday'], 'issued')
+process_date(cards, ['cyear', 'cmonth', 'cday'], 'issued')
 
 #merging clients and disps with cards
-# clients_disps_cards = clients_disps.merge(cards, on='disp_id', how='outer')
+clients_disps_cards = clients_disps.merge(cards, on='disp_id', how='outer')
 
 #loading districts data
 districts = pd.read_csv("./data/district.csv", sep=';')
@@ -107,7 +107,7 @@ transactions.rename(columns={'type':'trans_type'}, inplace=True)
 
 process_date(transactions, ['tyear', 'tmonth', 'tday'])
 
-#mergins clients, disps, cards, districts and accounts with transactions
+#merging clients, disps, cards, districts and accounts with transactions
 clients_disps_cards_districts_accounts_transactions = clients_disps_cards_districts_accounts.merge(transactions, on="account_id", how="inner")
 
 
@@ -119,8 +119,16 @@ loans.rename(columns={'amount':'loan_amount', 'duration':'loan_duration', 'payme
 process_date(loans, ['lyear', 'lmonth', 'lday'])
 loans = loans[['loan_id', 'account_id', 'loan_amount', 'loan_duration', 'loan_monthly_payment', 'lyear', 'lmonth', 'lday', 'status']]
 
-#mergins clients, disps, cards, districts, accounts and transactions with loans
+#merging clients, disps, cards, districts, accounts and transactions with loans
 full_data = clients_disps_cards_districts_accounts_transactions.merge(loans, on="account_id")
+
+#groupby loan_id
+# full_data = full_data.groupby('loan_id').mean()
+
+#check which columns have null values
+# nan_values = full_data.isna()
+# nan_columns = nan_values.any()
+# columns_with_nan = full_data.columns[nan_columns].tolist()
 
 
 # ---------------------------------------------------------------------------
@@ -138,10 +146,10 @@ full_data = clients_disps_cards_districts_accounts_transactions.merge(loans, on=
 # clients_disps_cards_test = clients_disps.merge(cards_test, on='disp_id', how='outer')
 
 #merging clients, disps and cards_test with districts
-# clients_disps_cards_districts_test = clients_disps_cards.merge(districts, on="district_id", how='inner')
+clients_disps_cards_districts_test = clients_disps.merge(districts, on="district_id", how='inner')
 
 #merging clients, disps, cards_test and districts with accounts
-# clients_disps_cards_districts_accounts_test = clients_disps_cards_districts.merge(accounts, on="account_id")
+clients_disps_cards_districts_accounts_test = clients_disps_cards_districts_test.merge(accounts, on="account_id")
 
 #loading transaction test data
 transactions_test = pd.read_csv('./data/trans_test.csv', sep=';')
@@ -154,8 +162,8 @@ transactions_test.rename(columns={'type':'trans_type'}, inplace=True)
 
 process_date(transactions_test, ['tyear', 'tmonth', 'tday'])
 
-#mergins clients, disps, cards_test, districts and accounts with transactions_test
-clients_disps_cards_districts_accounts_transactions_test = clients_disps_cards_districts_accounts.merge(transactions_test, on="account_id")
+#merging clients, disps, cards_test, districts and accounts with transactions_test
+clients_disps_cards_districts_accounts_transactions_test = clients_disps_cards_districts_accounts_test.merge(transactions_test, on="account_id")
 
 
 #loading loan test data
@@ -167,7 +175,10 @@ loans_test.rename(columns={'amount':'loan_amount', 'duration':'loan_duration', '
 process_date(loans_test, ['lyear', 'lmonth', 'lday'])
 loans_test = loans_test[['loan_id', 'account_id', 'loan_amount', 'loan_duration', 'loan_monthly_payment', 'lyear', 'lmonth', 'lday', 'status']]
 
-#mergins clients, disps, cards_test, districts, accounts and transactions_test with loans_test
+#merging clients, disps, cards_test, districts, accounts and transactions_test with loans_test
 full_data_test = clients_disps_cards_districts_accounts_transactions_test.merge(loans_test, on="account_id")
 full_data_test.drop(columns={"status"}, inplace=True)
+
+#groupby loan_id
+# full_data_test = full_data_test.groupby('loan_id').mean()
 
