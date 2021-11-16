@@ -55,12 +55,17 @@ cards = pd.read_csv("./data/card_train.csv", sep=';')
 
 #rename type column to card_type
 cards.rename(columns={'type':'card_type'}, inplace=True)
+cards.drop(columns=["issued"], inplace = True)
 
 #process cards data
-process_date(cards, ['cyear', 'cmonth', 'cday'], 'issued')
+# process_date(cards, ['cyear', 'cmonth', 'cday'], 'issued')
 
 #merging clients and disps with cards
 clients_disps_cards = clients_disps.merge(cards, on='disp_id', how='outer')
+
+clients_disps_cards["card_id"] = clients_disps_cards["card_id"].fillna(0)
+clients_disps_cards["card_type"] = clients_disps_cards["card_type"].fillna("Undefined")
+
 
 #loading districts data
 districts = pd.read_csv("./data/district.csv", sep=';')
@@ -123,7 +128,7 @@ loans = loans[['loan_id', 'account_id', 'loan_amount', 'loan_duration', 'loan_mo
 full_data = clients_disps_cards_districts_accounts_transactions.merge(loans, on="account_id")
 
 #groupby loan_id
-# full_data = full_data.groupby('loan_id').mean()
+full_data = full_data.groupby('loan_id').mean()
 
 #check which columns have null values
 # nan_values = full_data.isna()
@@ -136,17 +141,25 @@ full_data = clients_disps_cards_districts_accounts_transactions.merge(loans, on=
 
 #preprocessing test data
 
-#loading cards test data
-# cards_test = pd.read_csv("./data/card_test.csv", sep=';')
+#loading cards data
+cards_test = pd.read_csv("./data/card_test.csv", sep=';')
+# cards.drop(columns=["type"],inplace=True)
 
 #rename type column to card_type
-# cards_test.rename(columns={'type':'card_type'}, inplace=True)
+cards_test.rename(columns={'type':'card_type'}, inplace=True)
+cards_test.drop(columns=["issued"], inplace = True)
+
+#process cards data
+# process_date(cards_test, ['cyear', 'cmonth', 'cday'], 'issued')
 
 #merging clients and disps with cards_test
-# clients_disps_cards_test = clients_disps.merge(cards_test, on='disp_id', how='outer')
+clients_disps_cards_test = clients_disps.merge(cards_test, on='disp_id', how='outer')
+
+clients_disps_cards_test["card_id"] = clients_disps_cards_test["card_id"].fillna(0)
+clients_disps_cards_test["card_type"] = clients_disps_cards_test["card_type"].fillna("Undefined")
 
 #merging clients, disps and cards_test with districts
-clients_disps_cards_districts_test = clients_disps.merge(districts, on="district_id", how='inner')
+clients_disps_cards_districts_test = clients_disps_cards_test.merge(districts, on="district_id", how='inner')
 
 #merging clients, disps, cards_test and districts with accounts
 clients_disps_cards_districts_accounts_test = clients_disps_cards_districts_test.merge(accounts, on="account_id")
@@ -180,5 +193,5 @@ full_data_test = clients_disps_cards_districts_accounts_transactions_test.merge(
 full_data_test.drop(columns={"status"}, inplace=True)
 
 #groupby loan_id
-# full_data_test = full_data_test.groupby('loan_id').mean()
+full_data_test = full_data_test.groupby('loan_id').mean()
 
