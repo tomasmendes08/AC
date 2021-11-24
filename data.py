@@ -6,7 +6,9 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV
 
 from sklearn.utils import resample
-from sklearn.metrics import plot_confusion_matrix, accuracy_score, precision_score, recall_score, roc_auc_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score, f1_score
+from sklearn.ensemble import RandomForestClassifier
+#from imblearn.under_sampling import RandomUnderSampler
 
 def generate_gender(month):
     
@@ -51,6 +53,7 @@ process_date(accounts, ['account_creation_date_in_days'])
 
 #loading loans data
 loans = pd.read_csv('./data/loan_train.csv', sep=';')
+loans['status'].replace({1:0, -1:1}, inplace=True)
 
 #process loan creation date
 process_date(loans, ['loan_creation_date_in_days'])
@@ -177,6 +180,7 @@ loans_merged['status'] = status
 
 #loading loans data
 loans_test = pd.read_csv('./data/loan_test.csv', sep=';')
+loans_test['status'].replace({1:0, -1:1}, inplace=True)
 
 
 #loading transaction data
@@ -265,6 +269,19 @@ loans_test_merged.drop(columns=['account_id', 'client_id', 'district_id', 'disp_
 
 train_split, test_split = train_test_split(loans_merged, test_size=0.25, stratify=loans_merged['status'])
 
+df_majority = train_split[train_split.status == 0]
+df_minority = train_split[train_split.status == 1]
+
+df_minority_upsampled = resample(df_minority, 
+                                  replace=True,     # sample with replacement
+                                  n_samples=282    # to match majority class
+                                  )
+
+train_split = pd.concat([df_majority, df_minority_upsampled])
+
+#undersample = RandomUnderSampler(sampling_strategy='majority')
+#X_over, y_over = undersample.fit_resample(X_train, y_train)
+
 X_train = train_split.iloc[:, :-1].values
 y_train = train_split.iloc[:, -1].values
 X_test = test_split.iloc[:, :-1].values
@@ -273,27 +290,31 @@ y_test = test_split.iloc[:, -1].values
 
 dt_classifier = AdaBoostClassifier(random_state=1)
 
+
 dt_grid_search = GridSearchCV(dt_classifier,
                             param_grid={},
                             scoring='roc_auc',
                             cv=5)
 
-df_majority = train_split[train_split.status == 1]
-df_minority = train_split[train_split.status == -1]
+#tuned_parameters = {'n_estimators': [300],
+#                     'max_features': ['auto', 'sqrt'],
+#                     'max_depth': [4, 6, 8, 10],
+#                     'criterion': ['gini', 'entropy'],
+#                     'class_weight': [{0:1, 1:6}]}
+#
+#dt_grid_search = GridSearchCV(RandomForestClassifier(),
+#                     tuned_parameters,
+#                     n_jobs=-1,
+#                     scoring='roc_auc',
+#                     cv=3)
 
-df_minority_upsampled = resample(df_minority, 
-                                  replace=True,     # sample with replacement
-                                  n_samples=211    # to match majority class
-                                  )
-
-loan_train_balanced = pd.concat([df_majority, df_minority_upsampled])
 
 all_ids_test = loans_test_merged['loan_id'].values
 
 dt_grid_search.fit(X_train, y_train)
 best_score = dt_grid_search.best_score_
 print("Best Score: " + str(best_score))
-
+print('Best parameters: {}'.format(dt_grid_search.best_params_))
 predictions_train = dt_grid_search.predict(X_train)
 predictions_test = dt_grid_search.predict(X_test)
 
@@ -302,8 +323,8 @@ predictions_competition = dt_grid_search.predict_proba(loans_test_merged)
 
 print("Area under ROC curve: " + str(roc_auc_score(y_test, dt_grid_search.predict(X_test))))
 
-predictions_competition = pd.DataFrame(predictions_competition, columns=['col2','Predicted'])
-predictions_competition.drop('col2', axis=1, inplace=True)
+predictions_competition = pd.DataFrame(predictions_competition, columns=['Predicted','col2'])
+#predictions_competition.drop('col2', axis=1, inplace=True)
 dataframetemp = pd.DataFrame(all_ids_test, columns=['Id'])
 dataframeids = pd.concat([dataframetemp, predictions_competition], axis=1)
 results = dataframeids.drop_duplicates(subset=['Id'], keep='first')
