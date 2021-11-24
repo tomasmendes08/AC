@@ -32,7 +32,7 @@ dt_classifier = AdaBoostClassifier(random_state=1)
 dt_grid_search = GridSearchCV(dt_classifier,
                             param_grid={},
                             scoring='roc_auc',
-                            cv=10)
+                            cv=5)
 
 dt_grid_search.fit(X_train, y_train)
 best_score = dt_grid_search.best_score_
@@ -50,4 +50,4 @@ dataframeids = pd.concat([dataframetemp, predictions_competition], axis=1)
 results = dataframeids.drop_duplicates(subset=['Id'], keep='first')
 
 
-# results.to_csv('out.csv', index = False)
+results.to_csv('out.csv', index = False)
