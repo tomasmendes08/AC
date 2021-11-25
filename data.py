@@ -294,19 +294,19 @@ dt_classifier = AdaBoostClassifier(random_state=1)
 dt_grid_search = GridSearchCV(dt_classifier,
                             param_grid={},
                             scoring='roc_auc',
-                            cv=5)
+                            cv=4)
 
-#tuned_parameters = {'n_estimators': [300],
+# tuned_parameters = {'n_estimators': [300],
 #                     'max_features': ['auto', 'sqrt'],
 #                     'max_depth': [4, 6, 8, 10],
 #                     'criterion': ['gini', 'entropy'],
 #                     'class_weight': [{0:1, 1:6}]}
-#
-#dt_grid_search = GridSearchCV(RandomForestClassifier(),
+
+# dt_grid_search = GridSearchCV(RandomForestClassifier(),
 #                     tuned_parameters,
 #                     n_jobs=-1,
 #                     scoring='roc_auc',
-#                     cv=3)
+#                     cv=5)
 
 
 all_ids_test = loans_test_merged['loan_id'].values
@@ -324,7 +324,7 @@ predictions_competition = dt_grid_search.predict_proba(loans_test_merged)
 print("Area under ROC curve: " + str(roc_auc_score(y_test, dt_grid_search.predict(X_test))))
 
 predictions_competition = pd.DataFrame(predictions_competition, columns=['Predicted','col2'])
-#predictions_competition.drop('col2', axis=1, inplace=True)
+predictions_competition.drop('col2', axis=1, inplace=True)
 dataframetemp = pd.DataFrame(all_ids_test, columns=['Id'])
 dataframeids = pd.concat([dataframetemp, predictions_competition], axis=1)
 results = dataframeids.drop_duplicates(subset=['Id'], keep='first')
