@@ -17,6 +17,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier as RFC
 
 from collections import Counter
 
@@ -133,33 +134,35 @@ final_data_test['gender'] = genders
 
 final_data = final_data[['type', 'frequency','amount', 'duration', 'payments', 'account_age','loan_age', 'client_age', 'gender', 'status']]
 
-train_split, test_split = train_test_split(final_data, test_size=0.25, stratify=final_data['status'])
 
 
-X_train = train_split.iloc[:, :-1].values
-y_train = train_split.iloc[:, -1].values
-X_test = test_split.iloc[:, :-1].values
-y_test = test_split.iloc[:, -1].values
+# train_split, test_split = train_test_split(final_data, test_size=0.25, stratify=final_data['status'])
 
 
-scaler = StandardScaler()
-scaler.fit(X_train)
+# X_train = train_split.iloc[:, :-1].values
+# y_train = train_split.iloc[:, -1].values
+# X_test = test_split.iloc[:, :-1].values
+# y_test = test_split.iloc[:, -1].values
 
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.fit_transform(X_test)
 
-svm_classifier = SVC(random_state=1, probability=True)
+# scaler = StandardScaler()
+# scaler.fit(X_train)
 
-'''tuned_parameters = [{'kernel': ['rbf', 'linear','poly','sigmoid'], 
-                        'gamma': ['auto','scale', 1e-3, 1e-4], 
-                        'C': [0.01, 0.1, 1, 10, 100],
-                        'class_weight': ['balanced', None]}]'''
+# X_train = scaler.fit_transform(X_train)
+# X_test = scaler.fit_transform(X_test)
 
-grid_search = GridSearchCV(svm_classifier,
-                          param_grid={},
-                          scoring='roc_auc',
-                          n_jobs=-1,
-                          cv=10)
+# # svm_classifier = SVC(random_state=1, probability=True)
+
+# rfc_classifier = RFC(max_depth=2, random_state=1)
+
+# tuned_parameters = [{}]
+
+
+# grid_search = GridSearchCV(rfc_classifier,
+#                           param_grid={},
+#                           scoring='roc_auc',
+#                           n_jobs=-1,
+#                           cv=10)
 
 # dt_classifier = DecisionTreeClassifier(random_state=1, class_weight={1:1, -1:6})
 
@@ -169,18 +172,18 @@ grid_search = GridSearchCV(svm_classifier,
 #                             scoring='roc_auc',
 #                             cv=10)
 
-grid_search.fit(X_train, y_train)
-predictions_train = grid_search.predict(X_train)
-predictions_test = grid_search.predict(X_test)
+# grid_search.fit(X_train, y_train)
+# predictions_train = grid_search.predict(X_train)
+# predictions_test = grid_search.predict(X_test)
 
-predictions_competition = grid_search.predict_proba(final_data_test)
-predictions_competition = pd.DataFrame(predictions_competition, columns=['Predicted', 'col2'])
-predictions_competition.drop('col2', axis=1, inplace=True)
-dataframetemp = pd.DataFrame(all_ids_test, columns=['Id'])
-dataframeids = pd.concat([dataframetemp, predictions_competition], axis=1)
-results = dataframeids.drop_duplicates(subset=['Id'], keep='first')
+# predictions_competition = grid_search.predict_proba(final_data_test)
+# predictions_competition = pd.DataFrame(predictions_competition, columns=['Predicted', 'col2'])
+# predictions_competition.drop('col2', axis=1, inplace=True)
+# dataframetemp = pd.DataFrame(all_ids_test, columns=['Id'])
+# dataframeids = pd.concat([dataframetemp, predictions_competition], axis=1)
+# results = dataframeids.drop_duplicates(subset=['Id'], keep='first')
 
 
-results.to_csv('out.csv', index = False)
+# results.to_csv('out.csv', index = False)
 
 

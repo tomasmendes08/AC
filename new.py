@@ -128,7 +128,19 @@ loans = loans[['loan_id', 'account_id', 'loan_amount', 'loan_duration', 'loan_mo
 full_data = clients_disps_cards_districts_accounts_transactions.merge(loans, on="account_id")
 
 #groupby loan_id
-full_data = full_data.groupby('loan_id').mean()
+full_data = full_data.groupby('loan_id').mean()     #provavelmente, isto não é uma boa solução
+
+# Create correlation matrix
+corr_matrix = full_data.corr().abs()
+
+# Select upper triangle of correlation matrix
+upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+
+# Find features with correlation greater than 0.95
+to_drop = [column for column in upper.columns if any(upper[column] > 0.95)]
+
+# Drop features 
+full_data.drop(to_drop, axis=1, inplace=True)
 
 #check which columns have null values
 # nan_values = full_data.isna()
@@ -194,4 +206,18 @@ full_data_test.drop(columns={"status"}, inplace=True)
 
 #groupby loan_id
 full_data_test = full_data_test.groupby('loan_id').mean()
+
+full_data_test.drop(to_drop, axis=1, inplace=True)
+
+# # Create correlation matrix
+# corr_matrix = full_data_test.corr().abs()
+
+# # Select upper triangle of correlation matrix
+# upper_test = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+
+# # Find features with correlation greater than 0.95
+# to_drop_test = [column for column in upper_test.columns if any(upper_test[column] > 0.95)]
+
+# # Drop features 
+# full_data_test.drop(to_drop_test, axis=1, inplace=True)
 

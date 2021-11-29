@@ -13,10 +13,17 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.utils import resample
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import classification_report, confusion_matrix, precision_score, f1_score
+from imblearn.over_sampling import SMOTE 
 
+full_data_test.drop(columns=['status'], inplace=True)
+inputs = full_data.drop(columns=['status'])
+labels = full_data['status']
 
+x_train, x_test, y_train, y_test = train_test_split(inputs, labels, test_size=0.25, stratify=full_data['status'])
 
-train_split, test_split = train_test_split(full_data, test_size=0.25, stratify=full_data['status'])
+oversample = SMOTE()
+x_train, y_train = oversample.fit_resample(x_train, y_train)
+
 
 # df_majority = train_split[train_split.status == 1]
 # df_minority = train_split[train_split.status == -1]
@@ -27,11 +34,6 @@ train_split, test_split = train_test_split(full_data, test_size=0.25, stratify=f
 #                                  )
 
 # train_split = pd.concat([df_majority, df_minority_upsampled])
-
-X_train = train_split.iloc[:, :-1].values
-y_train = train_split.iloc[:, -1].values
-X_test = test_split.iloc[:, :-1].values
-y_test = test_split.iloc[:, -1].values
 
 
 # scaler = StandardScaler()
@@ -51,12 +53,12 @@ dt_grid_search = GridSearchCV(dt_classifier,
                             cv=4)
 
 
-dt_grid_search.fit(X_train, y_train)
+dt_grid_search.fit(x_train, y_train)
 print('Best score: {}'.format(dt_grid_search.best_score_))
 
 print(53 * '=')
 print("TRAINING")
-predict_dt_train = dt_grid_search.predict(X_train)
+predict_dt_train = dt_grid_search.predict(x_train)
 print('Precision score: {}'.format(precision_score(y_train, predict_dt_train)))
 # print("F1 Score: {}".format(f1_score(y_train, predict_dt_train)))
 print(f"ROC: {roc_auc_score(y_train, predict_dt_train)}")
@@ -66,7 +68,7 @@ print(classification_report(y_train, predict_dt_train, labels=np.unique(predict_
 
 print(53 * '=')
 print("TESTING")
-predict_dt_test = dt_grid_search.predict(X_test)
+predict_dt_test = dt_grid_search.predict(x_test)
 print('Precision score: {}'.format(precision_score(y_test, predict_dt_test)))
 # print('Best parameters: {}'.format(dt_grid_search.best_params_))
 # print("F1 Score: {}".format(f1_score(y_test, predict_dt_test)))
@@ -75,8 +77,8 @@ print('\nClassification Report: ')
 print(classification_report(y_test, predict_dt_test, labels=np.unique(predict_dt_test)))
 
 
-predictions_train = dt_grid_search.predict(X_train)
-predictions_test = dt_grid_search.predict(X_test)
+predictions_train = dt_grid_search.predict(x_train)
+predictions_test = dt_grid_search.predict(x_test)
 
 
 predictions_competition = dt_grid_search.predict_proba(full_data_test)
