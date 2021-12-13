@@ -81,6 +81,13 @@ amount_max = transactions.groupby(['account_id'], as_index=False)['amount'].max(
 amount_max.rename(columns={'amount':'max_amount'}, inplace=True)
 amount_avg = transactions.groupby(['account_id'], as_index=False)['amount'].mean()
 amount_avg.rename(columns={'amount':'avg_amount'}, inplace=True)
+amount_sum = transactions.groupby(['account_id'], as_index=False)['amount'].sum()
+amount_sum.rename(columns={'amount':'sum_amount'}, inplace=True)
+
+#dates
+min_date = transactions.groupby(['account_id'], as_index=False)['transaction_date'].min()
+max_date = transactions.groupby(['account_id'], as_index=False)['transaction_date'].max()
+
 
 #balance
 balance_min = transactions.groupby(['account_id'], as_index=False)['balance'].min()
@@ -126,12 +133,15 @@ trans_processed = trans_processed.merge(balance_max, on='account_id', how='inner
 trans_processed = trans_processed.merge(balance_avg, on='account_id', how='inner')
 trans_processed['credit'] = credit
 trans_processed['withdrawal'] = withdrawal
-trans_processed = trans_processed.merge(credit_min, on='account_id', how='inner')
-trans_processed = trans_processed.merge(credit_max, on='account_id', how='inner')
-trans_processed = trans_processed.merge(credit_avg, on='account_id', how='inner')
-trans_processed = trans_processed.merge(withdrawal_min, on='account_id', how='inner')
-trans_processed = trans_processed.merge(withdrawal_max, on='account_id', how='inner')
-trans_processed = trans_processed.merge(withdrawal_avg, on='account_id', how='inner')
+trans_processed = trans_processed.merge(credit_min, on='account_id', how='left')
+trans_processed = trans_processed.merge(credit_max, on='account_id', how='left')
+trans_processed = trans_processed.merge(credit_avg, on='account_id', how='left')
+trans_processed = trans_processed.merge(withdrawal_min, on='account_id', how='left')
+trans_processed = trans_processed.merge(withdrawal_max, on='account_id', how='left')
+trans_processed = trans_processed.merge(withdrawal_avg, on='account_id', how='left')
+trans_processed.fillna(0, inplace=True)
+
+# payments = loans[['account_id', 'payments']]
 
 
 #loading disps data
@@ -195,7 +205,7 @@ number_cards = cards_disps.groupby(['account_id'], as_index=False).size()
 number_cards.rename(columns={'size':'number_of_cards'}, inplace=True)
        
     
-loans_merged = loans.merge(trans_disps, on='account_id', how='inner')
+loans_merged = loans.merge(trans_disps, on='account_id', how='left')
 loans_merged = loans_merged.merge(last_balance_dataframe, on='account_id', how='inner')
 loans_merged = loans_merged.merge(owner_disps, on='account_id', how='inner')
 loans_merged = loans_merged.merge(clear_districts, left_on='district_id', right_on='code ', how='inner')
@@ -210,7 +220,7 @@ owner_ages = []
 
 for i in range(len(loan_dates)):
     owner_ages.append(relativedelta(loan_dates[i], owners_dates[i]).years)
-    
+
     
 loans_merged['owner_age'] = owner_ages    
     
@@ -229,6 +239,24 @@ loans_merged['loan_year'] = years
 loans_merged['loan_month'] = months
 loans_merged['loan_day'] = days 
 
+account_ids = loans_merged['account_id'].to_list()
+
+amounts_month = []
+can_pay = []
+
+for account_id in account_ids:
+    date_max = max_date.loc[max_date['account_id'] == account_id]['transaction_date'].item()
+    date_min = min_date.loc[min_date['account_id'] == account_id]['transaction_date'].item()
+    month_amount = amount_sum.loc[amount_sum['account_id'] == account_id]['sum_amount'].item()/((relativedelta(date_max, date_min).years * 12) + relativedelta(date_max, date_min).months)
+    amounts_month.append(month_amount)
+    payment = loans_merged.loc[loans_merged['account_id'] == account_id]['payments'].item()
+    if payment <= month_amount:
+        can_pay.append(1)
+    else:
+        can_pay.append(0)
+
+loans_merged['amount_moth'] = amounts_month
+loans_merged['can_pay'] = can_pay
 status = loans_merged['status']
 loans_merged.drop(columns=['account_id', 'client_id', 'district_id', 'disp_id', 'code ', 'status', 'loan_creation_date', 'birthdate', 'loan_id'], inplace=True)
 loans_merged['status'] = status
@@ -261,6 +289,13 @@ amount_max = transactions_test.groupby(['account_id'], as_index=False)['amount']
 amount_max.rename(columns={'amount':'max_amount'}, inplace=True)
 amount_avg = transactions_test.groupby(['account_id'], as_index=False)['amount'].mean()
 amount_avg.rename(columns={'amount':'avg_amount'}, inplace=True)
+amount_sum = transactions_test.groupby(['account_id'], as_index=False)['amount'].sum()
+amount_sum.rename(columns={'amount':'sum_amount'}, inplace=True)
+
+#dates
+min_date = transactions_test.groupby(['account_id'], as_index=False)['transaction_date'].min()
+max_date = transactions_test.groupby(['account_id'], as_index=False)['transaction_date'].max()
+
 
 #balance
 balance_min = transactions_test.groupby(['account_id'], as_index=False)['balance'].min()
@@ -306,12 +341,13 @@ trans_processed = trans_processed.merge(balance_max, on='account_id', how='inner
 trans_processed = trans_processed.merge(balance_avg, on='account_id', how='inner')
 trans_processed['credit'] = credit
 trans_processed['withdrawal'] = withdrawal
-trans_processed = trans_processed.merge(credit_min, on='account_id', how='inner')
-trans_processed = trans_processed.merge(credit_max, on='account_id', how='inner')
-trans_processed = trans_processed.merge(credit_avg, on='account_id', how='inner')
-trans_processed = trans_processed.merge(withdrawal_min, on='account_id', how='inner')
-trans_processed = trans_processed.merge(withdrawal_max, on='account_id', how='inner')
-trans_processed = trans_processed.merge(withdrawal_avg, on='account_id', how='inner')
+trans_processed = trans_processed.merge(credit_min, on='account_id', how='left')
+trans_processed = trans_processed.merge(credit_max, on='account_id', how='left')
+trans_processed = trans_processed.merge(credit_avg, on='account_id', how='left')
+trans_processed = trans_processed.merge(withdrawal_min, on='account_id', how='left')
+trans_processed = trans_processed.merge(withdrawal_max, on='account_id', how='left')
+trans_processed = trans_processed.merge(withdrawal_avg, on='account_id', how='left')
+trans_processed.fillna(0, inplace=True)
 
 trans_disps = trans_processed.merge(disps_groups, on='account_id', how='inner').rename(columns={'type':'members'})
 
@@ -372,12 +408,31 @@ loans_test_merged['loan_year'] = years
 loans_test_merged['loan_month'] = months
 loans_test_merged['loan_day'] = days 
 
+account_ids = loans_test_merged['account_id'].to_list()
+
+amounts_month = []
+can_pay = []
+
+for account_id in account_ids:
+    date_max = max_date.loc[max_date['account_id'] == account_id]['transaction_date'].item()
+    date_min = min_date.loc[min_date['account_id'] == account_id]['transaction_date'].item()
+    month_amount = amount_sum.loc[amount_sum['account_id'] == account_id]['sum_amount'].item()/((relativedelta(date_max, date_min).years * 12) + relativedelta(date_max, date_min).months)
+    amounts_month.append(month_amount)
+    payment = loans_test_merged.loc[loans_test_merged['account_id'] == account_id]['payments'].item()
+    if payment <= month_amount:
+        can_pay.append(1)
+    else:
+        can_pay.append(0)
+
+loans_test_merged['amount_moth'] = amounts_month
+loans_test_merged['can_pay'] = can_pay
+
 all_ids_test = loans_test_merged['loan_id'].values
 
 loans_test_merged.drop(columns=['account_id', 'client_id', 'district_id', 'disp_id', 'code ', 'status', 'loan_creation_date', 'birthdate'], inplace=True)
 
-loans_merged.to_csv("./data/train.csv")
-loans_test_merged.to_csv("./data/test.csv")
+loans_merged.to_csv("./data/train.csv", index = False)
+loans_test_merged.to_csv("./data/test.csv", index = False)
 
 
 # train_split, test_split = train_test_split(loans_merged, test_size=0.25, stratify=loans_merged['status'])
