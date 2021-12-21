@@ -9,6 +9,7 @@ from sklearn.utils import resample
 from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score, f1_score, classification_report, SCORERS
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from dateutil.relativedelta import relativedelta
+from sklearn.metrics import confusion_matrix
 
 from imblearn.over_sampling import SMOTE
 
@@ -98,6 +99,16 @@ balance_avg = transactions.groupby(['account_id'], as_index=False)['balance'].me
 balance_avg.rename(columns={'balance':'avg_balance'}, inplace=True)
 
 
+def statistics(df, column):
+    minimum = df.groupby(['account_id'], as_index=False)[column].min()
+    minimum.rename(columns={column:'min_' + column}, inplace=True)
+    maximum = df.groupby(['account_id'], as_index=False)[column].max()
+    maximum.rename(columns={column:'max_' + column}, inplace=True)
+    average = df.groupby(['account_id'], as_index=False)[column].mean()
+    average.rename(columns={column:'avg_' + column}, inplace=True)
+    
+    return minimum, maximum, average
+
 #credit
 credit_min = transactions.loc[transactions['type'] == 'credit'].groupby(['account_id'], as_index=False)['amount'].min()
 credit_min.rename(columns={'amount':'min_credit_amount'}, inplace=True)
@@ -167,12 +178,16 @@ process_date(owner_disps, ['birthdate' ,'gender'],'birth_number')
 districts = pd.read_csv("./data/district.csv", sep=';')
 
 #replace missing values with the next column's value
-districts["unemploymant rate '95 "] = np.where(districts["unemploymant rate '95 "] == '?', districts["unemploymant rate '96 "], districts["unemploymant rate '95 "])
+districts["unemploymant rate '95 "] = np.where(districts["unemploymant rate '95 "] == '?',
+                                               districts["unemploymant rate '96 "],
+                                               districts["unemploymant rate '95 "])
 districts["unemploymant rate '95 "] = pd.to_numeric(districts["unemploymant rate '95 "])
 
 
 #replace missing values with the next column's value
-districts["no. of commited crimes '95 "] = np.where(districts["no. of commited crimes '95 "] == '?', districts["no. of commited crimes '96 "], districts["no. of commited crimes '95 "])
+districts["no. of commited crimes '95 "] = np.where(districts["no. of commited crimes '95 "] == '?',
+                                                    districts["no. of commited crimes '96 "],
+                                                    districts["no. of commited crimes '95 "])
 districts["no. of commited crimes '95 "] = pd.to_numeric(districts["no. of commited crimes '95 "])
 
 districts.drop(columns={'name '}, inplace=True)
@@ -193,7 +208,8 @@ for key in trans_group.groups.keys():
     aux = transactions[transactions['transaction_date'] == recent]
     last_balance.append(min(aux[aux['account_id'] == key]['balance'].tolist()))
     
-last_balance_dataframe = pd.DataFrame({'account_id' : account_ids, 'last_balance' : last_balance})
+last_balance_dataframe = pd.DataFrame({'account_id' : account_ids,
+                                       'last_balance' : last_balance})
 
 
 #loading cards data
@@ -255,7 +271,7 @@ for account_id in account_ids:
     else:
         can_pay.append(0)
 
-loans_merged['amount_moth'] = amounts_month
+loans_merged['amount_month'] = amounts_month
 loans_merged['can_pay'] = can_pay
 status = loans_merged['status']
 loans_merged.drop(columns=['account_id', 'client_id', 'district_id', 'disp_id', 'code ', 'status', 'loan_creation_date', 'birthdate', 'loan_id'], inplace=True)
