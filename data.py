@@ -15,8 +15,6 @@ from imblearn.over_sampling import SMOTE
 
 import datetime
 
-# print(sorted(SCORERS.keys()))
-
 def generate_gender(month):
     
     if month > 12:
@@ -48,8 +46,16 @@ def process_date(df, col_list, col_name='date'):
     df.drop(columns={col_name}, inplace=True)
 
 
-def compute_proportions(df, var):
-    return df[var].value_counts()
+def statistics(df, column, extra=""):
+    minimum = df.groupby(['account_id'], as_index=False)[column].min()
+    minimum.rename(columns={column:'min_' + extra + column}, inplace=True)
+    maximum = df.groupby(['account_id'], as_index=False)[column].max()
+    maximum.rename(columns={column:'max_'+ extra + column}, inplace=True)
+    average = df.groupby(['account_id'], as_index=False)[column].mean()
+    average.rename(columns={column:'avg_'+ extra + column}, inplace=True)
+    
+    return minimum, maximum, average
+
 
 
 #loading accounts data
@@ -76,54 +82,17 @@ transactions.drop(columns={'operation', 'k_symbol', 'bank', 'account'}, inplace=
 transactions['type'].replace({'withdrawal in cash':'withdrawal'}, inplace=True)
 
 #amount
-amount_min = transactions.groupby(['account_id'], as_index=False)['amount'].min()
-amount_min.rename(columns={'amount':'min_amount'}, inplace=True)
-amount_max = transactions.groupby(['account_id'], as_index=False)['amount'].max()
-amount_max.rename(columns={'amount':'max_amount'}, inplace=True)
-amount_avg = transactions.groupby(['account_id'], as_index=False)['amount'].mean()
-amount_avg.rename(columns={'amount':'avg_amount'}, inplace=True)
-amount_sum = transactions.groupby(['account_id'], as_index=False)['amount'].sum()
-amount_sum.rename(columns={'amount':'sum_amount'}, inplace=True)
-
-#dates
-min_date = transactions.groupby(['account_id'], as_index=False)['transaction_date'].min()
-max_date = transactions.groupby(['account_id'], as_index=False)['transaction_date'].max()
-
+amount_min, amount_max, amount_avg = statistics(transactions, 'amount')
 
 #balance
-balance_min = transactions.groupby(['account_id'], as_index=False)['balance'].min()
-balance_min.rename(columns={'balance':'min_balance'}, inplace=True)
-balance_max = transactions.groupby(['account_id'], as_index=False)['balance'].max()
-balance_max.rename(columns={'balance':'max_balance'}, inplace=True)
-balance_avg = transactions.groupby(['account_id'], as_index=False)['balance'].mean()
-balance_avg.rename(columns={'balance':'avg_balance'}, inplace=True)
+balance_min, balance_max, balance_avg = statistics(transactions, 'balance')
 
-
-def statistics(df, column):
-    minimum = df.groupby(['account_id'], as_index=False)[column].min()
-    minimum.rename(columns={column:'min_' + column}, inplace=True)
-    maximum = df.groupby(['account_id'], as_index=False)[column].max()
-    maximum.rename(columns={column:'max_' + column}, inplace=True)
-    average = df.groupby(['account_id'], as_index=False)[column].mean()
-    average.rename(columns={column:'avg_' + column}, inplace=True)
-    
-    return minimum, maximum, average
 
 #credit
-credit_min = transactions.loc[transactions['type'] == 'credit'].groupby(['account_id'], as_index=False)['amount'].min()
-credit_min.rename(columns={'amount':'min_credit_amount'}, inplace=True)
-credit_max = transactions.loc[transactions['type'] == 'credit'].groupby(['account_id'], as_index=False)['amount'].max()
-credit_max.rename(columns={'amount':'max_credit_amount'}, inplace=True)
-credit_avg = transactions.loc[transactions['type'] == 'credit'].groupby(['account_id'], as_index=False)['amount'].mean()
-credit_avg.rename(columns={'amount':'avg_credit_amount'}, inplace=True)
+credit_min, credit_max, credit_avg = statistics(transactions.loc[transactions['type'] == 'credit'], 'amount', "credit_")
 
 #withdrawal
-withdrawal_min = transactions.loc[transactions['type'] == 'withdrawal'].groupby(['account_id'], as_index=False)['amount'].min()
-withdrawal_min.rename(columns={'amount':'min_withdrawal_amount'}, inplace=True)
-withdrawal_max = transactions.loc[transactions['type'] == 'withdrawal'].groupby(['account_id'], as_index=False)['amount'].max()
-withdrawal_max.rename(columns={'amount':'max_withdrawal_amount'}, inplace=True)
-withdrawal_avg = transactions.loc[transactions['type'] == 'withdrawal'].groupby(['account_id'], as_index=False)['amount'].mean()
-withdrawal_avg.rename(columns={'amount':'avg_withdrawal_amount'}, inplace=True)
+withdrawal_min, withdrawal_max, withdrawal_avg = statistics(transactions.loc[transactions['type'] == 'withdrawal'], 'amount', "withdrawal_")
 
 movements = transactions.groupby(['account_id'], as_index=False)['type'].count()
 types = transactions.groupby(['account_id'], as_index=False)['type']
@@ -152,8 +121,6 @@ trans_processed = trans_processed.merge(withdrawal_max, on='account_id', how='le
 trans_processed = trans_processed.merge(withdrawal_avg, on='account_id', how='left')
 trans_processed.fillna(0, inplace=True)
 
-# payments = loans[['account_id', 'payments']]
-
 
 #loading disps data
 disps = pd.read_csv("./data/disp.csv", sep=';')
@@ -179,8 +146,8 @@ districts = pd.read_csv("./data/district.csv", sep=';')
 
 #replace missing values with the next column's value
 districts["unemploymant rate '95 "] = np.where(districts["unemploymant rate '95 "] == '?',
-                                               districts["unemploymant rate '96 "],
-                                               districts["unemploymant rate '95 "])
+                                                districts["unemploymant rate '96 "],
+                                                districts["unemploymant rate '95 "])
 districts["unemploymant rate '95 "] = pd.to_numeric(districts["unemploymant rate '95 "])
 
 
@@ -209,7 +176,7 @@ for key in trans_group.groups.keys():
     last_balance.append(min(aux[aux['account_id'] == key]['balance'].tolist()))
     
 last_balance_dataframe = pd.DataFrame({'account_id' : account_ids,
-                                       'last_balance' : last_balance})
+                                        'last_balance' : last_balance})
 
 
 #loading cards data
@@ -257,22 +224,6 @@ loans_merged['loan_day'] = days
 
 account_ids = loans_merged['account_id'].to_list()
 
-amounts_month = []
-can_pay = []
-
-for account_id in account_ids:
-    date_max = max_date.loc[max_date['account_id'] == account_id]['transaction_date'].item()
-    date_min = min_date.loc[min_date['account_id'] == account_id]['transaction_date'].item()
-    month_amount = amount_sum.loc[amount_sum['account_id'] == account_id]['sum_amount'].item()/((relativedelta(date_max, date_min).years * 12) + relativedelta(date_max, date_min).months)
-    amounts_month.append(month_amount)
-    payment = loans_merged.loc[loans_merged['account_id'] == account_id]['payments'].item()
-    if payment <= month_amount:
-        can_pay.append(1)
-    else:
-        can_pay.append(0)
-
-loans_merged['amount_month'] = amounts_month
-loans_merged['can_pay'] = can_pay
 status = loans_merged['status']
 loans_merged.drop(columns=['account_id', 'client_id', 'district_id', 'disp_id', 'code ', 'status', 'loan_creation_date', 'birthdate', 'loan_id'], inplace=True)
 loans_merged['status'] = status
@@ -299,44 +250,18 @@ transactions_test.drop(columns={'operation', 'k_symbol', 'bank', 'account'}, inp
 transactions_test['type'].replace({'withdrawal in cash':'withdrawal'}, inplace=True)
 
 #amount
-amount_min = transactions_test.groupby(['account_id'], as_index=False)['amount'].min()
-amount_min.rename(columns={'amount':'min_amount'}, inplace=True)
-amount_max = transactions_test.groupby(['account_id'], as_index=False)['amount'].max()
-amount_max.rename(columns={'amount':'max_amount'}, inplace=True)
-amount_avg = transactions_test.groupby(['account_id'], as_index=False)['amount'].mean()
-amount_avg.rename(columns={'amount':'avg_amount'}, inplace=True)
-amount_sum = transactions_test.groupby(['account_id'], as_index=False)['amount'].sum()
-amount_sum.rename(columns={'amount':'sum_amount'}, inplace=True)
-
-#dates
-min_date = transactions_test.groupby(['account_id'], as_index=False)['transaction_date'].min()
-max_date = transactions_test.groupby(['account_id'], as_index=False)['transaction_date'].max()
+amount_min, amount_max, amount_avg = statistics(transactions_test, 'amount')
 
 
 #balance
-balance_min = transactions_test.groupby(['account_id'], as_index=False)['balance'].min()
-balance_min.rename(columns={'balance':'min_balance'}, inplace=True)
-balance_max = transactions_test.groupby(['account_id'], as_index=False)['balance'].max()
-balance_max.rename(columns={'balance':'max_balance'}, inplace=True)
-balance_avg = transactions_test.groupby(['account_id'], as_index=False)['balance'].mean()
-balance_avg.rename(columns={'balance':'avg_balance'}, inplace=True)
+balance_min, balance_max, balance_avg = statistics(transactions_test, 'balance')
 
 
 #credit
-credit_min = transactions_test.loc[transactions_test['type'] == 'credit'].groupby(['account_id'], as_index=False)['amount'].min()
-credit_min.rename(columns={'amount':'min_credit_amount'}, inplace=True)
-credit_max = transactions_test.loc[transactions_test['type'] == 'credit'].groupby(['account_id'], as_index=False)['amount'].max()
-credit_max.rename(columns={'amount':'max_credit_amount'}, inplace=True)
-credit_avg = transactions_test.loc[transactions_test['type'] == 'credit'].groupby(['account_id'], as_index=False)['amount'].mean()
-credit_avg.rename(columns={'amount':'avg_credit_amount'}, inplace=True)
+credit_min, credit_max, credit_avg = statistics(transactions_test.loc[transactions_test['type'] == 'credit'], 'amount', "credit_")
 
 #withdrawal
-withdrawal_min = transactions_test.loc[transactions_test['type'] == 'withdrawal'].groupby(['account_id'], as_index=False)['amount'].min()
-withdrawal_min.rename(columns={'amount':'min_withdrawal_amount'}, inplace=True)
-withdrawal_max = transactions_test.loc[transactions_test['type'] == 'withdrawal'].groupby(['account_id'], as_index=False)['amount'].max()
-withdrawal_max.rename(columns={'amount':'max_withdrawal_amount'}, inplace=True)
-withdrawal_avg = transactions_test.loc[transactions_test['type'] == 'withdrawal'].groupby(['account_id'], as_index=False)['amount'].mean()
-withdrawal_avg.rename(columns={'amount':'avg_withdrawal_amount'}, inplace=True)
+withdrawal_min, withdrawal_max, withdrawal_avg = statistics(transactions_test.loc[transactions_test['type'] == 'withdrawal'], 'amount', "withdrawal_")
 
 movements = transactions_test.groupby(['account_id'], as_index=False)['type'].count()
 types = transactions_test.groupby(['account_id'], as_index=False)['type']
@@ -426,127 +351,9 @@ loans_test_merged['loan_day'] = days
 
 account_ids = loans_test_merged['account_id'].to_list()
 
-amounts_month = []
-can_pay = []
-
-for account_id in account_ids:
-    date_max = max_date.loc[max_date['account_id'] == account_id]['transaction_date'].item()
-    date_min = min_date.loc[min_date['account_id'] == account_id]['transaction_date'].item()
-    month_amount = amount_sum.loc[amount_sum['account_id'] == account_id]['sum_amount'].item()/((relativedelta(date_max, date_min).years * 12) + relativedelta(date_max, date_min).months)
-    amounts_month.append(month_amount)
-    payment = loans_test_merged.loc[loans_test_merged['account_id'] == account_id]['payments'].item()
-    if payment <= month_amount:
-        can_pay.append(1)
-    else:
-        can_pay.append(0)
-
-loans_test_merged['amount_moth'] = amounts_month
-loans_test_merged['can_pay'] = can_pay
-
 all_ids_test = loans_test_merged['loan_id'].values
 
 loans_test_merged.drop(columns=['account_id', 'client_id', 'district_id', 'disp_id', 'code ', 'status', 'loan_creation_date', 'birthdate'], inplace=True)
 
 loans_merged.to_csv("./data/train.csv", index = False)
 loans_test_merged.to_csv("./data/test.csv", index = False)
-
-
-# train_split, test_split = train_test_split(loans_merged, test_size=0.25, stratify=loans_merged['status'])
-
-# df_majority = train_split[train_split.status == 0]
-# df_minority = train_split[train_split.status == 1]
-
-# df_minority_upsampled = resample(df_minority, 
-#                                   replace=True,     # sample with replacement
-#                                   n_samples=282    # to match majority class
-#                                   )
-
-# # train_split = pd.concat([df_majority, df_minority_upsampled])
-
-# #undersample = RandomUnderSampler(sampling_strategy='majority')
-# #X_over, y_over = undersample.fit_resample(X_train, y_train)
-
-# X_train = train_split.iloc[:, :-1].values
-# y_train = train_split.iloc[:, -1].values
-# X_test = test_split.iloc[:, :-1].values
-# y_test = test_split.iloc[:, -1].values
-
-
-# # dt_classifier = AdaBoostClassifier(random_state=1)
-
-# dt_classifier = GradientBoostingClassifier()
-
-# tuned_parameters = {'n_estimators': [3000],
-#                     'learning_rate': [0.001, 0.05],
-#                     'max_depth': [20, 30],
-#                     'max_features': ['auto','sqrt','log2']}
-
-# dt_grid_search = GridSearchCV(dt_classifier,
-#                             tuned_parameters,
-#                             scoring='f1_weighted'
-#                             )
-
-
-
-# # tuned_parameters = {'n_estimators': [2000],
-# #                     'max_features': ['auto', 'sqrt'],
-# #                     'max_depth': [4, 6, 8, 10],
-# #                     'criterion': ['gini', 'entropy']}
-# #                     # 'class_weight': [{0:1, 1:6}]}
-
-
-# # dt_grid_search = GridSearchCV(RandomForestClassifier(),
-# #                     tuned_parameters,
-# #                     n_jobs=-1,
-# #                     scoring='roc_auc'
-# #                     )
-
-
-# # sm = SMOTE()
-# # X_res, y_res = sm.fit_resample(X_train, y_train)
-
-
-
-
-# dt_grid_search.fit(X_train, y_train)
-# best_score = dt_grid_search.best_score_
-# print("Best Score: " + str(best_score))
-# print('Best parameters: {}'.format(dt_grid_search.best_params_))
-# # predictions_train = dt_grid_search.predict(X_res)
-# # predictions_test = dt_grid_search.predict(X_test)
-
-# # print('Best score: {}'.format(dt_grid_search.best_score_))
-
-# print(53 * '=')
-# print("TRAINING")
-# predictions_train = dt_grid_search.predict(X_train)
-# print('Precision score: {}'.format(precision_score(y_train, predictions_train)))
-# # print("F1 Score: {}".format(f1_score(y_train, predict_dt_train)))
-# print(f"ROC: {roc_auc_score(y_train, predictions_train)}")
-# print('\nClassification Report: ')
-# print(classification_report(y_train, predictions_train, labels=np.unique(predictions_train)))
-
-
-# print(53 * '=')
-# print("TESTING")
-# predictions_test = dt_grid_search.predict(X_test)
-# print('Precision score: {}'.format(precision_score(y_test, predictions_test)))
-# # print('Best parameters: {}'.format(dt_grid_search.best_params_))
-# # print("F1 Score: {}".format(f1_score(y_test, predict_dt_test)))
-# print(f"ROC: {roc_auc_score(y_test, predictions_test)}")
-# print('\nClassification Report: ')
-# print(classification_report(y_test, predictions_test, labels=np.unique(predictions_test)))
-
-
-# predictions_competition = dt_grid_search.predict_proba(loans_test_merged)
-
-# #print("Area under ROC curve: " + str(roc_auc_score(y_test, dt_grid_search.predict(X_test))))
-
-# predictions_competition = pd.DataFrame(predictions_competition, columns=['col2', 'Predicted'])
-# predictions_competition.drop('col2', axis=1, inplace=True)
-# dataframetemp = pd.DataFrame(all_ids_test, columns=['Id'])
-# dataframeids = pd.concat([dataframetemp, predictions_competition], axis=1)
-# results = dataframeids.drop_duplicates(subset=['Id'], keep='first')
-
-
-# results.to_csv('out.csv', index = False)
